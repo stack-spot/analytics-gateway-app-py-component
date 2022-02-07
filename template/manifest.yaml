@@ -1,0 +1,19 @@
+api_gateway:
+  region: us-east-1
+  name: <api-name>
+  type: PRIVATE
+  auth:
+    iam_auth: TRUE
+    api_key: TRUE
+  registry: <registry-name>
+  record:
+    zone_id: <zone_id>
+  vpc_endpoint:
+    vpc_id: <vpc_id>
+    subnets_ids:
+      - <subnet-id>
+    security_group:
+      ip_blocks_sg:
+        - in_cidr
+      eg_blocks_sg:
+        - out_in_cidr
