@@ -18,11 +18,11 @@ def test_aws_cdk_create_lambda_assets():
                 {
                     "ServerSideEncryptionByDefault": {
                         "SSEAlgorithm": "AES256"
-                        }
                     }
-                ]
-            },
-        }) 
+                }
+            ]
+        },
+    })
 
 
 def test_aws_cdk_create_lambda_for_schema_validation():
@@ -33,7 +33,8 @@ def test_aws_cdk_create_lambda_for_schema_validation():
     registry = "registry-1"
     region = "us-east-1"
 
-    lambda_stack.create_lambda_for_schema_validation(bucket_name, registry, region)
+    lambda_stack.create_lambda_for_schema_validation(
+        bucket_name, registry, region)
 
     template = assertions.Template.from_stack(lambda_stack)
     template.has_resource_properties("AWS::Lambda::Function", {
@@ -44,36 +45,37 @@ def test_aws_cdk_create_lambda_for_schema_validation():
                     [
                         {
                             "Ref": "AWS::AccountId"
-                            },
+                        },
                         "-bucket-name-gateway-assets"
-                        ]
                     ]
-                },
-            "S3Key": "bucket-name-api-lambda.zip"
+                ]
             },
+            "S3Key": "bucket-name-api-lambda.zip"
+        },
         "Role": {
             "Fn::GetAtt": [
                 "bucketnameapilambdarole",
                 "Arn"
-                ]
-            },
+            ]
+        },
         "Description": "Lambda function used for data schema validation",
         "FunctionName": "bucket-name-api-lambda-schema",
         "Handler": "main.main",
-        "MemorySize": 1028,
+        "MemorySize": 1024,
         "ReservedConcurrentExecutions": 25,
-        "Runtime": "python3.8",
+        "Runtime": "python3.9",
         "Tags": [
             {
                 "Key": "name",
                 "Value": "bucket-name-api-lambda-schema"
-                }
-            ],
+            }
+        ],
         "Timeout": 10,
         "TracingConfig": {
             "Mode": "Active"
-            }
-        })
+        }
+    })
+
     template.has_resource_properties("AWS::IAM::Role", {
         "AssumeRolePolicyDocument": {
             "Version": "2012-10-17",
@@ -82,14 +84,12 @@ def test_aws_cdk_create_lambda_for_schema_validation():
                     "Sid": "",
                     "Effect": "Allow",
                     "Principal": {
-                        "Service": [
-                            "lambda.amazonaws.com"
-                            ]
-                        },
+                        "Service": "lambda.amazonaws.com"
+                    },
                     "Action": "sts:AssumeRole"
-                    }
-                ]
-            },
+                }
+            ]
+        },
         "Policies": [
             {
                 "PolicyDocument": {
@@ -110,11 +110,11 @@ def test_aws_cdk_create_lambda_for_schema_validation():
                                 "glue:CheckSchemaVersionValidity",
                                 "glue:QuerySchemaVersionMetadata",
                                 "glue:GetTags"
-                                ],
+                            ],
                             "Resource": [
                                 "*"
-                                ]
-                            },
+                            ]
+                        },
                         {
                             "Sid": "AWSLogsSchemaRegistryReadonlyAccess",
                             "Effect": "Allow",
@@ -123,32 +123,32 @@ def test_aws_cdk_create_lambda_for_schema_validation():
                                 "logs:CreateLogGroup",
                                 "logs:CreateLogStream",
                                 "logs:PutLogEvents"
-                                ],
+                            ],
                             "Resource": [
                                 "*"
-                                ]
-                            },
+                            ]
+                        },
                         {
                             "Sid": "AWSPutSchemaRegistryReadonlyAccess",
-                            "Action": "kinesis:PutRecord",
+                            "Action": "kinesis:PutRecords",
                             "Resource": {
                                 "Fn::Join": [
                                     "",
                                     [
-                                        "arn:aws:kinesis:us-east-1:",
-                                        {
-                                            "Ref": "AWS::AccountId"
-                                            },
+                                      "arn:aws:kinesis:us-east-1:",
+                                      {
+                                          "Ref": "AWS::AccountId"
+                                      },
                                         f":stream/{registry}-*"
-                                        ]
                                     ]
-                                },
+                                ]
+                            },
                             "Effect": "Allow"
-                            }
-                        ]
-                     },
-                     "PolicyName": f"{bucket_name}-api-lambda-policy"
-                   }
-                 ],
-                 "RoleName": f"{bucket_name}-api-lambda-role"
-        }) 
+                        }
+                    ]
+                },
+                "PolicyName": f"{bucket_name}-api-lambda-policy"
+            }
+        ],
+        "RoleName": f"{bucket_name}-api-lambda-role"
+    })

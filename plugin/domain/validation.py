@@ -1,8 +1,8 @@
 from plugin.utils.logging import logger
 from .exceptions import (
-    ManifestPrivateCustomDomainNotFound,
-    ManifestEdgeVpcEndpointNotRequired,
-    ManifestPrivateVpcEndpointNotFound
+    ManifestPrivateVpcEndpointNotFound,
+    ManifestRecordNotFound,
+    ManifestVpcEndpointNotRequired
 )
 
 
@@ -33,9 +33,9 @@ class ValidationManifest:
         if obj.type == 'PRIVATE' and not obj.vpc_endpoint:
             raise ManifestPrivateVpcEndpointNotFound(logger)
 
-        if obj.type == 'EDGE':
+        if obj.type in {'EDGE', 'REGIONAL'}:
             if obj.vpc_endpoint:
-                raise ManifestEdgeVpcEndpointNotRequired(logger)
+                raise ManifestVpcEndpointNotRequired(logger)
 
             if not obj.record:
-                raise ManifestPrivateCustomDomainNotFound(logger)
+                raise ManifestRecordNotFound(logger)

@@ -1,10 +1,11 @@
 from abc import ABCMeta, abstractmethod
 
+
 class KinesisInterface(metaclass=ABCMeta):
     """
     TO DO
     """
 
     @abstractmethod
-    def put_record(self, name: str, record: str, partition_key: str):
+    def put_records(self, name: str, records: list, partition_key: str) -> None:
         raise NotImplementedError

@@ -40,7 +40,10 @@ class S3ResourceTest(TestCase):
     def plugin_manifest(self):
         self.manifest = Manifest({
             "api_gateway": {
-                "name": "my-gateway",
+                "name": self.__random_string(
+                    letter=string.ascii_letters,
+                    size=18
+                ),
                 "region": "us-east-1",
                 "type": "PRIVATE",
                 "auth": {
@@ -64,21 +67,11 @@ class S3ResourceTest(TestCase):
 
     def test_not_implemented_error(self):
         with pytest.raises(NotImplementedError):
-            name = self.__random_string(
-                letter=string.ascii_letters.lower(),
-                size=18)
-            self.manifest.api_gateway.name = f"{name}-test"
-
             s3 = MockS3Resource()
             s3.check_bucket_object(object_key="my-key",
                                    bucket_name="my-bucket")
 
         with pytest.raises(NotImplementedError):
-            name = self.__random_string(
-                letter=string.ascii_letters.lower(),
-                size=18)
-            self.manifest.api_gateway.name = f"{name}-test"
-
             s3 = MockS3Resource()
             s3.upload_object(path="path/to/my/file",
                              bucket_name="my-bucket", package="my-package")

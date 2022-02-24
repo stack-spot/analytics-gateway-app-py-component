@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+
 class LambdaResourceInterface(metaclass=ABCMeta):
     """
     TO DO

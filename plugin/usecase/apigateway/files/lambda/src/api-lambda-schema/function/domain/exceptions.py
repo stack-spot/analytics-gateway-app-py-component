@@ -16,13 +16,13 @@ class APIError(Exception):
         return str(self.message)
 
 
-class PutRecordError(APIError):
+class PutRecordsError(APIError):
     """
-    Exception for when could not put a record with boto3 sdk.
+    Exception for when could not put records with boto3 sdk.
     Attributes:
         message -- explanation of the error
     """
 
-    def __init__(self, message="Couldn't put record."):
+    def __init__(self, message="Couldn't put records."):
         self.message = message
         super().__init__(self.message)

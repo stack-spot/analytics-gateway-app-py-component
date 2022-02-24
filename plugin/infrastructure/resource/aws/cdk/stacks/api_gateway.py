@@ -14,15 +14,15 @@ class ApiGateway(cdk.Stack):
         cdk ([type]): [description]
     """
 
-    def create_security_group(self, domain: str, eg_blocks_sg: list, ip_blocks_sg: list, vpc_id: str):
+    def create_security_group(self, name: str, eg_blocks_sg: list, ip_blocks_sg: list, vpc_id: str):
 
-        security_group_name = f'SecurityGroup{domain}'
+        security_group_name = f'SecurityGroup{name}'
 
         security_group = CfnSecurityGroup(
             self,
             security_group_name,
             group_description="Allow inbound traffic",
-            group_name=domain,
+            group_name=name,
             security_group_egress=[
                 CfnSecurityGroup.EgressProperty(
                     ip_protocol="-1",
@@ -35,7 +35,7 @@ class ApiGateway(cdk.Stack):
                 CfnSecurityGroup.IngressProperty(
                     ip_protocol="all",
                     cidr_ip=cidr_ip,
-                    description=f'Allow all traffic from domain cidr block {cidr_ip}',
+                    description=f'Allow all traffic from cidr block {cidr_ip}',
                     from_port=0,
                     to_port=65535
                 ) for cidr_ip in ip_blocks_sg
@@ -44,10 +44,6 @@ class ApiGateway(cdk.Stack):
                 cdk.CfnTag(
                     key="Name",
                     value=security_group_name
-                ),
-                cdk.CfnTag(
-                    key="domain",
-                    value=domain
                 )
             ],
             vpc_id=vpc_id
@@ -55,8 +51,8 @@ class ApiGateway(cdk.Stack):
 
         return security_group
 
-    def create_api_gateway(self, domain: str, vpc_id: str, vpce: CfnVPCEndpoint, region: str, type_: str):
-        api_name = domain
+    def create_api_gateway(self, account_id: str, name: str, vpc_id: str, vpce: CfnVPCEndpoint, region: str, type_: str):
+
         policy_lambda_event = {
             "Version": "2012-10-17",
             "Statement": [
@@ -94,54 +90,75 @@ class ApiGateway(cdk.Stack):
                         "logs:GetLogEvents",
                         "logs:FilterLogEvents"
                     ],
-                    "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/*"
+                    "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/lambda/*"
                 }
             ]
         }
+
+        policy_kinesis_proxy_event = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "kinesis:PutRecords"
+                    ],
+                    "Resource": f"arn:aws:kinesis:{region}:{account_id}:stream/{name}-*"
+                }
+            ]
+        }
+
         role_api_gateway = iam.CfnRole(
             self,
-            f"{api_name}-api-gateway-role",
-            role_name=f"{api_name}-api-gateway",
+            f"{name}-api-gateway-role",
+            role_name=f"{name}-api-gateway",
             assume_role_policy_document=get_role("OsDataRoleApi"),
             policies=[
                 iam.CfnRole.PolicyProperty(
                     policy_document=policy_lambda_event,
-                    policy_name=f"{api_name}-api-lambda-event-policy"
+                    policy_name=f"{name}-api-lambda-event-policy"
+                ),
+                iam.CfnRole.PolicyProperty(
+                    policy_document=policy_kinesis_proxy_event,
+                    policy_name=f"{name}-api-kinesis-proxy-event-policy"
                 )
             ]
         )
-        api_gateway_uri = f'arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/arn:aws:lambda:{region}:{cdk.Stack.of(self).account}:function:{api_name}-api-lambda-schema/invocations'
+        lambda_function_uri_invocation_arn = f"arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/arn:aws:lambda:{region}:{cdk.Stack.of(self).account}:function:{name}-api-lambda-schema/invocations"  # pylint: disable=line-too-long
+        kinesis_uri_invocation_arn = f"arn:aws:apigateway:{region}:kinesis:action/PutRecords"
         rest_api_policy = iam.PolicyDocument()
         cfn_rest_api = apigateway.CfnRestApi(
             self,
-            f'ApiGatewayRestApi{api_name}',
+            f'ApiGatewayRestApi{name}',
             body=interpolate_json_template(
                 get_api("OpenApiV2.0"),
                 {
-                    "api_name": api_name,
+                    "name": name,
                     "aws_account_id": cdk.Stack.of(self).account,
-                    "api_gateway_credentials": f'arn:aws:iam::{cdk.Stack.of(self).account}:role/{api_name}-api-gateway',
-                    "api_gateway_uri": api_gateway_uri,
+                    "api_gateway_role": f'arn:aws:iam::{cdk.Stack.of(self).account}:role/{name}-api-gateway',
+                    "lambda_function_uri_invocation_arn": lambda_function_uri_invocation_arn,
+                    "kinesis_uri_invocation_arn": kinesis_uri_invocation_arn,
                     "api_gateway_policy": f'arn:aws:execute-api:{region}:{cdk.Stack.of(self).account}:*',
                     "aws_region": region,
                     "aws_vpce": cdk.Fn.ref(vpce.logical_id),
-                    "aws_vpc": vpc_id,
-                    "apigateway-integration-credentials": f'{api_name}-api-gateway',
+                    "aws_vpc": vpc_id
                 }
             ),
-            description="API REST para publicar eventos no Data Product",
+            description="REST API to publish events to Data Lake",
             endpoint_configuration=apigateway.CfnRestApi.EndpointConfigurationProperty(
                 vpc_endpoint_ids=[
                     cdk.Fn.ref(vpce.logical_id)
                 ],
                 types=[type_]
             ),
-            name=f'{api_name}',
+            name=name,
             policy=rest_api_policy,
-            tags=[cdk.CfnTag(
-                key="domain",
-                value=domain
-            )]
+            tags=[
+                cdk.CfnTag(
+                    key="Name",
+                    value=name
+                )
+            ]
         )
         rest_api_policy.add_statements(
             iam.PolicyStatement(
@@ -176,33 +193,30 @@ class ApiGateway(cdk.Stack):
         )
         iam.CfnRole(
             self,
-            f"{api_name}-api-send-event",
-            role_name=f"{api_name}-api-send-event",
-            assume_role_policy_document=interpolate_json_template(
-                get_role("OsDataRoleApiEvent"),
-                {"AwsAccount": self.account}
-            ),
+            f"{name}-api-send-event",
+            role_name=f"{name}-api-send-event",
+            assume_role_policy_document=get_role("OsDataRoleApi"),
             policies=[
                 iam.CfnRole.PolicyProperty(
                     policy_document=policy_send_event,
-                    policy_name=f"{api_name}-api-send-event-policy"
+                    policy_name=f"{name}-api-send-event-policy"
                 )
             ]
         )
         cfn_api_key = apigateway.CfnApiKey(
             self,
-            f'ApiGatewayApiKy{api_name}',
-            description=f'Api Key - {api_name}',
+            f'ApiGatewayApiKy{name}',
+            description=f'Api Key - {name}',
             enabled=True,
-            name=f'{api_name}-key',
+            name=f'{name}-key',
             tags=[cdk.CfnTag(
-                key="domain",
-                value=domain
+                key="Name",
+                value=name
             )]
         )
         cfn_deployment = apigateway.CfnDeployment(
             self,
-            f'ApiGatewayDeployment{api_name}',
+            f'ApiGatewayDeployment{name}',
             rest_api_id=cdk.Fn.ref(cfn_rest_api.logical_id),
             stage_description=apigateway.CfnDeployment.StageDescriptionProperty(
                 description="Deployed at",
@@ -215,15 +229,15 @@ class ApiGateway(cdk.Stack):
                     )
                 ]
             ),
-            stage_name=f'prd_{api_name}_stage'
+            stage_name=f'prd_{name}_stage'
         )
         cfn_usage_plan = apigateway.CfnUsagePlan(
             self,
-            f'ApiGatewayUsagePlan{api_name}',
+            f'ApiGatewayUsagePlan{name}',
             api_stages=[
                 apigateway.CfnUsagePlan.ApiStageProperty(
                     api_id=cdk.Fn.ref(cfn_rest_api.logical_id),
-                    stage=f'prd_{api_name}_stage'
+                    stage=f'prd_{name}_stage'
                 )
             ],
             description="description",
@@ -232,18 +246,18 @@ class ApiGateway(cdk.Stack):
                         period="DAY"
             ),
             tags=[cdk.CfnTag(
-                key="domain",
-                value=domain
+                key="Name",
+                value=name
             )],
             throttle=apigateway.CfnUsagePlan.ThrottleSettingsProperty(
                 burst_limit=500,
                 rate_limit=25
             ),
-            usage_plan_name=f'prd_{api_name}_usage_plan'
+            usage_plan_name=f'prd_{name}_usage_plan'
         )
         cfn_usage_plan_key = apigateway.CfnUsagePlanKey(
             self,
-            f'ApiGatewayUsagePlanKey{api_name}',
+            f'ApiGatewayUsagePlanKey{name}',
             key_id=cfn_api_key.get_att('APIKeyId').to_string(),
             key_type="API_KEY",
             usage_plan_id=cfn_usage_plan.get_att('Id').to_string()
@@ -256,8 +270,8 @@ class ApiGateway(cdk.Stack):
         cfn_usage_plan_key.add_depends_on(cfn_deployment)
         return cfn_rest_api
 
-    def create_vpc_endpoint(self, domain: str, region: str, subnet_ids: list, security_group_id: str, vpc_id: str):
-        vpc_endpoint_name = f'VPCEndpoint{domain}'
+    def create_vpc_endpoint(self, name: str, region: str, subnet_ids: list, security_group_id: str, vpc_id: str):
+        vpc_endpoint_name = f'VPCEndpoint{name}'
         vpc_endpoint = CfnVPCEndpoint(
             self,
             vpc_endpoint_name,

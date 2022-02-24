@@ -1,92 +1,232 @@
 openapi: "3.0.1"
 info:
   title: "{{api_name}}"
-  description: "API REST para publicar eventos no Data Product"
-  version: "1.0.0"
+  description: "REST API to publish events to Data Lake"
+  version: "1.1.0"
   contact:
     name: Data Mesh API Support
-    url: http://www.datamesh.com/support
-    email: support@datamesh.com
+    url: https://www.stackspot.com/
+    email: support@stackspot.com
 paths:
-  /v1/events/{dataProduct}/{schemaVersion}/{schema}:
+  /v1/events/{datalake_name}/{schema_version}/{schema_name}:
     post:
       operationId: "postStream"
       parameters:
-      - name: "dataProduct"
-        in: "path"
-        required: true
-        schema:
-          type: "string"
-          
-      - name: "schema"
-        in: "path"
-        required: true
-        schema:
-          type: "string"
-      
-      - name: "schemaVersion"
-        in: "path"
-        required: true
-        schema:
-          type: "string"
-      
+        - name: "datalake_name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+
+        - name: "schema_name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+
+        - name: "schema_version"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+          description: If query string validate=false, schema_version must be a number value  ("latest" can not be used).
+
+        - name: "validate"
+          in: "query"
+          schema:
+            type: "boolean"
+            default: true
+          description: If validate=false, EventData schema will not be validated.
+
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DataSchemaModel"
-        required: false
-      
+              $ref: "#/components/schemas/RequestModel"
+        required: true
       responses:
-        200:
-          $ref: "#/components/responses/REP-200"
-     
+        "200":
+          description: "200 response"
+          content: {}
       security:
-      - sigv4: []
-      - api_key: []
-      tags:
-        - dataschema
-
+        - sigv4: []
+        - api_key: []
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
       x-amazon-apigateway-integration:
-        type: "aws_proxy"
-        credentials: "{{api_gateway_credentials}}"
-        uri: "{{api_gateway_uri}}"
+        type: "aws"
+        credentials: "{{api_gateway_role}}"
+        httpMethod: "POST"
+        uri: "{{lambda_function_uri_invocation_arn}}"
         responses:
           default:
             statusCode: "200"
-
+            responseTemplates:
+              application/json:
+                "#set($context.responseOverride.status = $input.path('$.statusCode'))\n\
+                $input.path('$.body')"
         requestTemplates:
-          application/json: '#set($inputRoot = $input.path("$"))
-            #set($msgBody = $util.parseJson($input.body))
+          application/json: |
+            #if($input.params("validate") != "" && $util.isBoolean($input.params("validate")))
+              #set( $validate = $input.params("validate"))
+            #else
+              #set ($validate = "true")
+            #end
+
             {
-              "DataProduct" : "$input.params("dataProduct")",
-              "Schema":{
-                "SchemaVersion": "$input.params("schemaVersion")",
-                "SchemaName": "$input.params("schema")"
-              }
-            }'
+              "pathParameters": {
+                "datalake_name": "$input.params('datalake_name')",
+                "schema_name": "$input.params('schema_name')",
+                "schema_version": "$input.params('schema_version')"
+              },
+              "queryStringParameters": {
+                "validate": "$validate"
+              },
+              "body": "$util.escapeJavaScript($input.json('$'))"
+            }
         passthroughBehavior: "when_no_templates"
+  /v2/events/{datalake_name}/{schema_version}/{schema_name}:
+    post:
+      operationId: "postStream"
+      parameters:
+        - name: "schema_version"
+          in: "path"
+          required: true
+          schema:
+            type: number
+        - name: "datalake_name"
+          in: "path"
+          required: true
+          schema:
+            type: string
+        - name: "schema_name"
+          in: "path"
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestEventModelArray"
+        required: true
+      responses:
+        "400":
+          description: "400 response"
+          content: {}
+        "200":
+          description: "200 response"
+          content: {}
+      security:
+        - sigv4: []
+        - api_key: []
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      x-amazon-apigateway-integration:
+        type: "aws"
+        credentials: "{{api_gateway_role}}"
         httpMethod: "POST"
+        uri: "{{kinesis_uri_invocation_arn}}"
+        responses:
+          "4\\d{2}":
+            statusCode: "400"
+            responseTemplates:
+              application/json: |
+                {
+                  "requestId": "$context.requestId",
+                  "errorType": "EventTransactionError",
+                  "errorCategory": "DataSchema",
+                  "errorMessage": $input.json('$.message'),
+                  "errorTime": "$context.requestTime"
+                }
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |
+                {
+                  "requestId": "$context.requestId",
+                  "eventType": "EventTransaction",
+                  "eventCategory": "DataSchema",
+                  "eventMessage": "Put $input.path('$.Records').size() records in stream $input.params('datalake_name')-$input.params('schema_name')-kinesis",
+                  "evnentTime": "$context.requestTime"
+                }
+        requestTemplates:
+          application/json: |
+            #set($inputRoot = $input.path('$'))
+            #set( $event_id = "event_id" )
+            #set( $event_time = "event_time" )
+            #set( $data_product = "data_product" )
+            #set( $schema_name = "schema_name" )
+            #set( $schema_version = "schema_version" )
+            #set( $event_data = "event_data" )
+            #set( $quote = '"' )
+
+            {
+              "StreamName": "$input.params('datalake_name')-$input.params('schema_name')-kinesis",
+              "Records": [#foreach($elem in $inputRoot)
+                #set($jsonPath = "$[$foreach.index].EventData")
+                #set( $event_id_value = $elem.EventID )
+                #set( $event_time_value = $elem.EventTime )
+                #set( $data_product_value = $input.params('datalake_name') )
+                #set( $schema_name_value = $input.params('schema_name') )
+                #set( $schema_version_value = $input.params('schema_version') )
+                #set( $event_data_value = $util.parseJson($input.json($jsonPath)) )
+              
+              #set($base_64_data =  $util.base64Encode("{$quote$event_id$quote:$event_id_value,$quote$event_time$quote:$event_time_value,$quote$data_product$quote:$quote$data_product_value$quote,$quote$schema_name$quote:$quote$schema_name_value$quote,$quote$schema_version$quote:$schema_version_value,$quote$event_data$quote:$event_data_value}
+              ") )
+              {
+                "Data": "$base_64_data",
+                "PartitionKey": "default"
+              }#if($foreach.hasNext),#end
+            #end]
+            }
+        requestParameters:
+          integration.request.header.Content-Type: "'application/x-amz-json-1.1'"
+        passthroughBehavior: "when_no_templates"
 
 components:
   schemas:
-    DataSchemaModel:
-      "$schema": "http://json-schema.org/draft-04/schema#"
-      title": "DataSchemaModel"
-      description": "DataSchemaModel"
-      type: object
-      properties:
-        EventID:
-          type: integer
-        EventTime:
-          type: string
-        EventData:
-          type: object
-      required:
-      - EventID
-      - EventTime
-      - EventData
-
+    RequestEventModelArray:
+      type: "array"
+      items:
+        required:
+          - "EventData"
+          - "EventID"
+          - "EventTime"
+        type: "object"
+        properties:
+          EventTime:
+            type: "number"
+          EventID:
+            type: "number"
+          EventData:
+            type: "string"
+    RequestModel:
+      oneOf:
+        - type: "object"
+          required:
+            - "EventData"
+            - "EventID"
+            - "EventTime"
+          properties:
+            EventTime:
+              type: "number"
+            EventID:
+              type: "number"
+            EventData:
+              type: "string"
+        - type: "array"
+          items:
+            required:
+              - "EventData"
+              - "EventID"
+              - "EventTime"
+            type: "object"
+            properties:
+              EventTime:
+                type: "number"
+              EventID:
+                type: "number"
+              EventData:
+                type: "string"
   securitySchemes:
     api_key:
       type: "apiKey"
@@ -97,33 +237,45 @@ components:
       name: "Authorization"
       in: "header"
       x-amazon-apigateway-authtype: "awsSigv4"
-  
-  responses:
-    REP-200: 
-        description: "200 response"
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                message:
-                  type: string
-              required:
-                - message
+x-amazon-apigateway-gateway-responses:
+  BAD_REQUEST_BODY:
+    statusCode: 400
+    responseParameters:
+      gatewayresponse.header.Content-type: "'application/json'"
+    responseTemplates:
+      application/json: |
+        {
+          "requestId": "$context.requestId",
+          "errorType": "EventTransactionError",
+          "errorCategory": "DataSchema",
+          "errorMessage": "$context.error.validationErrorString",
+          "errorTime": "$context.requestTime"
+        }
+  BAD_REQUEST_PARAMETERS:
+    statusCode: 400
+    responseParameters:
+      gatewayresponse.header.Content-type: "'application/json'"
+    responseTemplates:
+      application/json: '{"message":$context.error.messageString}'
 
 x-amazon-apigateway-policy:
   Version: "2012-10-17"
   Statement:
-  - Effect: "Allow"
-    Principal: "*"
-    Action: "execute-api:Invoke"
-    Resource: "{{api_gateway_policy}}"
-  - Effect: "Deny"
-    Principal: "*"
-    Action: "execute-api:Invoke"
-    Resource: "{{api_gateway_policy}}"
-    Condition:
-      StringNotEquals:
-        aws:SourceVpce: "{{aws_vpce}}"
-        aws:sourceVpc: "{{aws_vpc}}"
-
+    - Effect: "Allow"
+      Principal:
+        AWS: "*"
+      Action: "execute-api:Invoke"
+      Resource: "{{api_gateway_policy}}"
+    - Effect: "Deny"
+      Principal:
+        AWS: "*"
+      Action: "execute-api:Invoke"
+      Resource: "{{api_gateway_policy}}"
+      Condition:
+        StringNotEquals:
+          aws:sourceVpc: "{{aws_vpc}}"
+          aws:sourceVpce: "{{aws_vpce}}"
+x-amazon-apigateway-request-validators:
+  Validate body, query string parameters, and headers:
+    validateRequestParameters: true
+    validateRequestBody: true

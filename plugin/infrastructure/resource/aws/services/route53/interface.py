@@ -10,7 +10,6 @@ class Route53Interface(metaclass=ABCMeta):
     def get_hosted_zone(self, zone_id: str):
         raise NotImplementedError
 
-
     @abstractmethod
     def not_exists_record(self, zone_id: str, name: str):
         raise NotImplementedError

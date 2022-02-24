@@ -69,7 +69,7 @@ docker build -t data-api-gateway-component:latest .
 ```docker
 docker run \
 -v $PWD/template:/src/template \
--v ~/.aws:/home/orange/.aws \
+-v ~/.aws:/home/stk/.aws \
 -i data-api-gateway-component:latest \
 apply data-api-gateway -f /src/template/manifest.yaml
 ```

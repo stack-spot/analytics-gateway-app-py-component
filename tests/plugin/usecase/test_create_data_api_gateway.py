@@ -33,7 +33,10 @@ class CreateDataApiGatewayTest(TestCase):
     def plugin_manifest(self):
         self.manifest = Manifest({
             "api_gateway": {
-                "name": "my-gateway",
+                "name": self.__random_string(
+                    letter=string.ascii_letters,
+                    size=18
+                ),
                 "region": "us-east-1",
                 "type": "PRIVATE",
                 "auth": {
@@ -61,10 +64,6 @@ class CreateDataApiGatewayTest(TestCase):
     @mock.patch("plugin.infrastructure.resource.aws.cdk.main.AwsCdk.create_assets", return_value=None)
     @mock.patch("plugin.usecase.apigateway.main.SDK", autospec=True)
     def test_if_create_data_api_gateway_works(self, mock_service, _cdk_assets, _cdk_setup, _cdk_lambda_function, _package):
-        name = self.__random_string(
-            letter=string.ascii_letters,
-            size=18)
-        self.manifest.api_gateway.name = f"{name}_test"
         mock_cloud_service = mock_service.return_value
         mock_cloud_service.account_id.return_value = random.randint(
             1000000, 9000000)

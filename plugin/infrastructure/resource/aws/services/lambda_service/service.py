@@ -14,8 +14,7 @@ class LambdaResource(LambdaResourceInterface):
 
     def __init__(self, region: str):
         session = boto3.Session()
-        self._lambda = session.client(
-                "lambda", region_name=region)
+        self._lambda = session.client("lambda", region_name=region)
 
     def not_exists_lambda(self, name: str):
         try:
@@ -25,5 +24,5 @@ class LambdaResource(LambdaResourceInterface):
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 return True
             logger.error(
-                    "Unexpected error while getting function: %s", e)
+                "Unexpected error while getting function: %s", e)
             return False

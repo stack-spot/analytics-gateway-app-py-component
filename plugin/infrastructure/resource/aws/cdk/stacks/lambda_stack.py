@@ -50,9 +50,9 @@ class Lambda(cdk.Stack):
             description="Lambda function used for data schema validation",
             function_name=lambda_function_name,
             handler="main.main",
-            runtime="python3.8",
+            runtime="python3.9",
             reserved_concurrent_executions=25,
-            memory_size=1028,
+            memory_size=1024,
             timeout=10,
             role=role.attr_arn,
             tags=[cdk.CfnTag(

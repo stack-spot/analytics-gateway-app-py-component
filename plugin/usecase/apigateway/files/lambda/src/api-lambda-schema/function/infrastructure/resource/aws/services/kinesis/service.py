@@ -1,10 +1,12 @@
 from .interface import KinesisInterface
 from function.utils import logger
-from function.domain.exceptions import PutRecordError
+from function.domain.exceptions import PutRecordsError
 from botocore.client import ClientError
 import boto3
+import json
 
 logger = logger(__name__)
+
 
 class Kinesis(KinesisInterface):
     """
@@ -19,15 +21,21 @@ class Kinesis(KinesisInterface):
         self.kinesis = session.client(
             "kinesis", region_name=region)
 
-
-    def put_record(self, name: str, record: str, partition_key: str):
+    def put_records(self, name: str, records: list, partition_key: str) -> None:
         try:
-            response = self.kinesis.put_record(
+            records_to_put = [
+                {
+                    'Data': json.dumps(record).encode('utf-8'),
+                    'PartitionKey': partition_key
+                } for record in records
+            ]
+
+            self.kinesis.put_records(
                 StreamName=name,
-                Data=record,
-                PartitionKey=partition_key)
-            logger.info("Put record in stream %s.", name)
-            return response
+                Records=records_to_put
+            )
+
+            logger.info("Put %d records in stream %s.", len(records_to_put), name)
         except ClientError:
-            logger.exception("Couldn't put record in stream %s.", name)
-            raise  PutRecordError("Couldn't put record in stream %s.", name)
+            logger.exception("Couldn't put records in stream %s.", name)
+            raise PutRecordsError("Couldn't put records in stream %s.", name)

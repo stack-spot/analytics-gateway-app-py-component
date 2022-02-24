@@ -16,6 +16,7 @@ class CLIError(Exception):
     def __str__(self):
         return str(self.message)
 
+
 class HasFailedEventException(CLIError):
     """
     Has Failed Event Exception.
@@ -27,6 +28,7 @@ class HasFailedEventException(CLIError):
     def __init__(self, message="Stack has failed event."):
         self.message = message
         super().__init__(self.message)
+
 
 class ManifestPrivateVpcEndpointNotFound(CLIError):
     """
@@ -40,8 +42,9 @@ class ManifestPrivateVpcEndpointNotFound(CLIError):
         logger.error(message)
         self.message = message
         super().__init__(self.message)
-        
-class ManifestPrivateCustomDomainNotFound(CLIError):
+
+
+class ManifestRecordNotFound(CLIError):
     """
     Already Exist Registry.
 
@@ -49,12 +52,13 @@ class ManifestPrivateCustomDomainNotFound(CLIError):
         message -- explanation of the error
     """
 
-    def __init__(self, logger, message="Custom Domain configuration was not found, when type set to EDGE the Custom Domain becomes mandatory."):
+    def __init__(self, logger, message="Record configuration was not found, when type set to EDGE / REGIONAL the Record becomes mandatory."):
         logger.error(message)
         self.message = message
         super().__init__(self.message)
 
-class ManifestEdgeVpcEndpointNotRequired(CLIError):
+
+class ManifestVpcEndpointNotRequired(CLIError):
     """
     Already Exist Registry.
 
@@ -62,7 +66,7 @@ class ManifestEdgeVpcEndpointNotRequired(CLIError):
         message -- explanation of the error
     """
 
-    def __init__(self, logger, message="When type set to EDGE the Vpc endpoint not required."):
+    def __init__(self, logger, message="When type set to EDGE / REGIONAL the Vpc endpoint is not required."):
         logger.error(message)
         self.message = message
         super().__init__(self.message)

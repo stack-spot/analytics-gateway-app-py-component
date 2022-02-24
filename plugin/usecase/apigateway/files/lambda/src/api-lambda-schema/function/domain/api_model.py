@@ -5,7 +5,7 @@ import json
 
 @dataclass
 class ResponseObject:
-    id: str 
+    id: str
     type: str
     statusCode: int
     category: str
@@ -22,12 +22,13 @@ class ResponseObject:
                 'eventCategory': self.category,
                 'eventMessage': self.message,
                 'eventTime': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
+            })
         }
+
 
 @dataclass
 class ErrorResponseObject:
-    id: str 
+    id: str
     type: str
     statusCode: int
     category: str
@@ -44,5 +45,5 @@ class ErrorResponseObject:
                 'errorCategory': self.category,
                 'errorMessage': self.message,
                 'errorTime': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
+            })
         }

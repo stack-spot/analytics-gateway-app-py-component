@@ -1,5 +1,6 @@
 from .interface import S3ResourceInterface, S3Interface
 from botocore.client import ClientError
+from plugin.utils.logging import logger
 import boto3
 
 
@@ -13,7 +14,7 @@ class S3Resource(S3ResourceInterface, S3Interface):
     """
 
     def __init__(self):
-        self.s3 = boto3.resource('s3')
+        self.s3 = boto3.resource('s3').meta.client
 
     def upload_object(self, path: str, bucket_name: str, package: str):
         object_exists = self.check_bucket_object(
@@ -21,16 +22,17 @@ class S3Resource(S3ResourceInterface, S3Interface):
 
         if not object_exists:
             try:
-                self.s3.meta.client.upload_file(
+                self.s3.upload_file(
                     path,
                     bucket_name,
                     package)
+                print(f"Object {package} uploaded successfully")
             except ClientError as err:
-                print('exp: ', err)
+                logger.error('exp: %s', err)
 
     def check_bucket(self, bucket_name: str) -> bool:
         try:
-            self.s3.meta.client.head_bucket(Bucket=bucket_name)
+            self.s3.head_bucket(Bucket=bucket_name)
             return True
         except ClientError as err:
             error_code = int(err.response['Error']['Code'])
@@ -38,13 +40,13 @@ class S3Resource(S3ResourceInterface, S3Interface):
                 print(f"Access to Private Bucket {bucket_name} is Forbidden!")
                 return True
             if error_code == 404:
-                print(f"Bucket {bucket_name} Does Not Exist!")
+                print(f"Bucket {bucket_name} does not exist!")
                 return False
             return False
 
     def check_bucket_object(self, object_key: str, bucket_name: str) -> bool:
         try:
-            self.s3.meta.client.head_object(Key=object_key, Bucket=bucket_name)
+            self.s3.head_object(Key=object_key, Bucket=bucket_name)
             return True
         except ClientError as err:
             error_code = int(err.response['Error']['Code'])

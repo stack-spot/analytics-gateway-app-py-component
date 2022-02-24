@@ -18,7 +18,10 @@ class CdkStackLambdaSchemaValidation(TestCase):
     def plugin_manifest(self):
         self.manifest = Manifest({
             "api_gateway": {
-                "name": "my-gateway",
+                "name": self.__random_string(
+                    letter=string.ascii_letters,
+                    size=18
+                ),
                 "region": "us-east-1",
                 "type": "PRIVATE",
                 "auth": {
@@ -47,15 +50,10 @@ class CdkStackLambdaSchemaValidation(TestCase):
         self.stack = Lambda(self.app, self.stack_name)
 
     def test_if_create_lambda_schema_validation_works(self):
-        name = self.__random_string(
-            letter=string.ascii_letters,
-            size=18)
-        self.manifest.api_gateway.name = f"{name}_test"
-
         self.stack.create_bucket_for_lambda_assets(
             name="my-bucket-to-put-lambda-zip-file"
         )
 
         self.stack.create_lambda_for_schema_validation(
-            name, self.manifest.api_gateway.name,  self.manifest.api_gateway.region
+            self.manifest.api_gateway.name, self.manifest.api_gateway.name,  self.manifest.api_gateway.region
         )

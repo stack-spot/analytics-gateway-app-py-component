@@ -36,7 +36,7 @@
         },
         {
             "Sid": "AWSPutSchemaRegistryReadonlyAccess",
-            "Action": "kinesis:PutRecord",
+            "Action": "kinesis:PutRecords",
             "Resource": "arn:aws:kinesis:{{AwsRegion}}:{{AwsAccount}}:stream/{{RegistryName}}-*",
             "Effect": "Allow"
         }

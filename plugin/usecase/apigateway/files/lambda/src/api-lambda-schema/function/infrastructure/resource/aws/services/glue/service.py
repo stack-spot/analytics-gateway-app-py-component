@@ -17,11 +17,9 @@ class Glue(GlueInterface):
 
     def get_schema(self, **knargs):
         return self.glue.get_schema(**knargs)
-    
+
     def get_schema_by_definition(self, **knargs):
         return self.glue.get_schema_by_definition(**knargs)
-    
+
     def get_schema_version(self, **knargs):
         return self.glue.get_schema_version(**knargs)
-
-

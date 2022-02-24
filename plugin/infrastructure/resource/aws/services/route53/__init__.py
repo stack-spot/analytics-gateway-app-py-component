@@ -13,4 +13,3 @@ class Route53:
     @staticmethod
     def not_exists_record(zone_id: str, name: str):
         return Route53Service().not_exists_record(zone_id, name)
-

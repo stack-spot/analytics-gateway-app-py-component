@@ -185,7 +185,7 @@ class AwsCdkTest(TestCase, AwsCdk):
         mock_sts.get_caller_identity.side_effect = [
             {
                 "Account": "12345678912"
-            } for _ in range(2)
+            } for _ in range(3)
         ]
 
         mock_s3 = mock_boto3_s3.resource.return_value
