@@ -39,3 +39,12 @@ class ValidationManifest:
 
             if not obj.record:
                 raise ManifestRecordNotFound(logger)
+
+    @staticmethod
+    def check_special_characters(string: str):
+        special_characters = '"!@#$%^&*()-+?=,<>/'
+
+        if any(c in special_characters for c in string):
+            raise ValueError(
+                'Name must not contains any of these characters: "!@#$%^&*()-+?=,<>/')
+

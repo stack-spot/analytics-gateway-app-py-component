@@ -16,7 +16,7 @@ class AwsCdkTest(TestCase, AwsCdk):
     def setUp(self, mock_boto3_cf, mock_boto3_route53, mock_sdk) -> None:
         self.manifest = Manifest({
             "api_gateway": {
-                "name": "my-gateway",
+                "name": "my_gateway",
                 "region": "us-east-1",
                 "type": "PRIVATE",
                 "auth": {
@@ -176,27 +176,15 @@ class AwsCdkTest(TestCase, AwsCdk):
 
     @mock.patch("plugin.infrastructure.resource.aws.cdk.engine.helpers.is_created_resource", autospec=True)
     @mock.patch("plugin.infrastructure.resource.aws.services.main.boto3", autospec=True)
-    @mock.patch("plugin.infrastructure.resource.aws.services.s3.service.boto3", autospec=True)
     @mock.patch("plugin.infrastructure.resource.aws.services.route53.service.boto3", autospec=True)
     @mock.patch("plugin.infrastructure.resource.aws.cdk.engine.helpers.boto3", autospec=True)
-    def test_create_resources_with_aws_cdk(self, mock_boto3_cf, mock_boto3_route53, mock_boto3_s3, mock_boto3_sts, mock_created_resource):
+    def test_create_resources_with_aws_cdk(self, mock_boto3_cf, mock_boto3_route53, mock_boto3_sts, mock_created_resource):
         mock_sts = mock_boto3_sts.client.return_value
 
         mock_sts.get_caller_identity.side_effect = [
             {
                 "Account": "12345678912"
             } for _ in range(3)
-        ]
-
-        mock_s3 = mock_boto3_s3.resource.return_value
-
-        mock_s3.meta.client.head_bucket.side_effect = [
-            True,
-            True,
-            self.get_exception_from_s3_head_bucket(
-                exception=404, bucket_name="my-bucket"),
-            self.get_exception_from_s3_head_bucket(
-                exception=404, bucket_name="my-bucket")
         ]
 
         mock_route53 = mock_boto3_route53.client.return_value
@@ -227,16 +215,4 @@ class AwsCdkTest(TestCase, AwsCdk):
 
         self.create_setup(api_gateway=self.manifest.api_gateway)
 
-        # When bucket assets already exists
-        self.create_assets(api_gateway=self.manifest.api_gateway)
-
-        self.create_function(
-            name=self.manifest.api_gateway.name,
-            registry=self.manifest.api_gateway.registry,
-            region=self.manifest.api_gateway.region
-        )
-
-        self.mock_cloud_service.check_bucket.side_effect = [False, False]
-
-        # When bucket assets do not exists
-        self.create_assets(api_gateway=self.manifest.api_gateway)
+        #self.mock_cloud_service.check_bucket.side_effect = [False, False]

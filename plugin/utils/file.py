@@ -6,76 +6,11 @@ import os
 import sys
 from tempfile import mkstemp
 import subprocess
-import zipfile
 from plugin.utils.logging import logger
-
-
-class ZipUtilities:
-    """
-    TO DO
-    """
-
-    base_path: str
-
-    def add_to_zip(self, path, filename):
-        self.base_path = f"{get_current_pwd()}/{path}"
-        with zipfile.ZipFile(filename, 'a') as zip_file:
-            if os.path.isfile(path):
-                zip_file.write(path, path)
-            else:
-                os.chdir(self.base_path)
-                self.add_folder_to_zip(zip_file, '.')
-            zip_file.close()
-
-    def add_folder_to_zip(self, zip_file, folder):
-        for file in os.listdir(folder):
-
-            full_path = os.path.join(folder, file)
-
-            if os.path.isfile(full_path):
-                zip_file.write(full_path)
-            elif os.path.isdir(full_path):
-                self.add_folder_to_zip(zip_file, full_path)
 
 
 def get_current_pwd():
     return os.getcwd()
-
-
-def create_lambda_package(folder: str, output_zip: str):
-
-    out_dir = get_current_pwd()
-
-    remove_from_os(output_zip)
-    utilities = ZipUtilities()
-    logger.info("Creating %s file from directory: %s",
-                output_zip, os.path.abspath(folder))
-    utilities.add_to_zip(folder, output_zip)
-
-    requirements = "lambda_package"
-    remove_from_os(f"{out_dir}/{folder}/{requirements}")
-    install_lambda_dependencies(requirements)
-    os.chdir(out_dir)
-    logger.info(
-        "Adding lambda function dependencies from %s to %s file.", os.path.abspath(f"{folder}/{requirements}"), output_zip)
-    utilities.add_to_zip(f"{folder}/{requirements}", output_zip)
-    remove_from_os(f"{out_dir}/{folder}/{requirements}")
-    os.chdir(out_dir)
-
-
-def install_lambda_dependencies(target: str):
-
-    subprocess.check_call([
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-r",
-        "./requirements.txt",
-        "--disable-pip-version-check",
-        "--target",
-        target
-    ])
 
 
 def remove_from_os(path: str):

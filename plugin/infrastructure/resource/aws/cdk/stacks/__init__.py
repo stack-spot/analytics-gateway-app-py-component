@@ -1,9 +1,8 @@
 from aws_cdk import core as cdk
 
 from .api_gateway import ApiGateway
-from .lambda_stack import Lambda 
 
-class Stack(ApiGateway, Lambda):
+class Stack(ApiGateway):
     """
     TO DO
     Args:

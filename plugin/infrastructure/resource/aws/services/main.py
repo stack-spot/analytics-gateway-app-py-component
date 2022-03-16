@@ -3,14 +3,12 @@ import sys
 from botocore.exceptions import UnauthorizedSSOTokenError
 from botocore.client import BaseClient, ClientError
 from plugin.utils.logging import logger
-from .s3 import S3
 from .route53 import Route53
 from .acm import ACM
 from .gateway import ApiGateway
-from .lambda_service import Lambda
 
 
-class SDK(S3, Route53, ACM, ApiGateway, Lambda):
+class SDK(Route53, ACM, ApiGateway):
     """
     TODO
     """

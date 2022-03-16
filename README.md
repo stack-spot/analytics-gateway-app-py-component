@@ -30,26 +30,36 @@ A Data Api Gateway plugin is a set of subcomponents that create an environment c
 
    ```yaml
    api_gateway:
-     region: us-east-1 # ------------- (string) --- [REQUIRED]
-     name: gw_name # ----------------- (string) --- [REQUIRED]
-     type: PRIVATE # ----------------- (string) --- [REQUIRED]
+     region: us-east-1 # -------- (string) ---------------- [REQUIRED]
+     name: gw_name # ------------ (string - snake_case) --- [REQUIRED]
+     type: PRIVATE # ------------ (string) ---------------- [REQUIRED]
      auth:
-       iam_auth: TRUE # -------------- (boolean) -- [REQUIRED]
-       api_key: TRUE # --------------- (boolean) -- [REQUIRED]
-     registry: registry_name # ------- (string) --- [REQUIRED]
-     record: # ------------------------------------ [OPTIONAL]
+       iam_auth: TRUE # --------- (boolean) --------------- [REQUIRED]
+       api_key: TRUE # ---------- (boolean) --------------- [REQUIRED]
+     registry: registry_name # -- (string - snake_case) --- [REQUIRED]
+     record: # -------------------------------------------- [OPTIONAL]
        zone_id: YOUR_HOSTED_ZONE_ID
-     vpc_endpoint: # ------------------------------ [REQUIRED] for PRIVATE API-GW
-       vpc_id: # --------------------- (string)
-       subnets_ids: # ---------------- (list of subnet ids)
+     vpc_endpoint: # -------------------------------------- [REQUIRED] for PRIVATE API-GW
+       vpc_id: # ---------------- (string)
+       subnets_ids: # ----------- (list of subnet ids)
          - subnet-first_subnet
          - subnet-second_subnet
          - subnet-third_subnet
        security_group:
-         ip_blocks_sg: # ------------- (list of Ingress CIDR IP blocks)
-           - 10.0.0.0/21
-         eg_blocks_sg: # ------------- (list of Egress CIDR IP blocks)
-           - 0.0.0.0/0
+         ip_blocks_sg: # -------- (list of Ingress CIDR IP blocks)
+           - first_cidr_in
+           - second_cidr_in
+           .
+           .
+           .
+           - last_cidr_in
+         eg_blocks_sg: # -------- (list of Egress CIDR IP blocks)
+           - first_cidr_out
+           - second_cidr_out
+           .
+           .
+           .
+           - last_cidr_out
    ```
 
 2. Have your AWS credentials available to run the component. Credentials can be used via environment variables, or also via credentials stored locally in a file (usually in `~/.aws/credentials`). Credentials can be acquired in the following ways:

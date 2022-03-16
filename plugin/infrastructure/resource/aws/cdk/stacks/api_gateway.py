@@ -53,48 +53,6 @@ class ApiGateway(cdk.Stack):
 
     def create_api_gateway(self, account_id: str, name: str, vpc_id: str, vpce: CfnVPCEndpoint, region: str, type_: str):
 
-        policy_lambda_event = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "cloudformation:DescribeStacks",
-                        "cloudformation:ListStackResources",
-                        "cloudwatch:ListMetrics",
-                        "cloudwatch:GetMetricData",
-                        "ec2:DescribeSecurityGroups",
-                        "ec2:DescribeSubnets",
-                        "ec2:DescribeVpcs",
-                        "lambda:*",
-                        "logs:DescribeLogGroups",
-                        "states:DescribeStateMachine",
-                        "states:ListStateMachines"
-                    ],
-                    "Resource": "*"
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": "iam:PassRole",
-                    "Resource": "*",
-                    "Condition": {
-                        "StringEquals": {
-                            "iam:PassedToService": "lambda.amazonaws.com"
-                        }
-                    }
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "logs:DescribeLogStreams",
-                        "logs:GetLogEvents",
-                        "logs:FilterLogEvents"
-                    ],
-                    "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/lambda/*"
-                }
-            ]
-        }
-
         policy_kinesis_proxy_event = {
             "Version": "2012-10-17",
             "Statement": [
@@ -115,16 +73,11 @@ class ApiGateway(cdk.Stack):
             assume_role_policy_document=get_role("OsDataRoleApi"),
             policies=[
                 iam.CfnRole.PolicyProperty(
-                    policy_document=policy_lambda_event,
-                    policy_name=f"{name}-api-lambda-event-policy"
-                ),
-                iam.CfnRole.PolicyProperty(
                     policy_document=policy_kinesis_proxy_event,
                     policy_name=f"{name}-api-kinesis-proxy-event-policy"
                 )
             ]
         )
-        lambda_function_uri_invocation_arn = f"arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/arn:aws:lambda:{region}:{cdk.Stack.of(self).account}:function:{name}-api-lambda-schema/invocations"  # pylint: disable=line-too-long
         kinesis_uri_invocation_arn = f"arn:aws:apigateway:{region}:kinesis:action/PutRecords"
         rest_api_policy = iam.PolicyDocument()
         cfn_rest_api = apigateway.CfnRestApi(
@@ -136,7 +89,6 @@ class ApiGateway(cdk.Stack):
                     "name": name,
                     "aws_account_id": cdk.Stack.of(self).account,
                     "api_gateway_role": f'arn:aws:iam::{cdk.Stack.of(self).account}:role/{name}-api-gateway',
-                    "lambda_function_uri_invocation_arn": lambda_function_uri_invocation_arn,
                     "kinesis_uri_invocation_arn": kinesis_uri_invocation_arn,
                     "api_gateway_policy": f'arn:aws:execute-api:{region}:{cdk.Stack.of(self).account}:*',
                     "aws_region": region,

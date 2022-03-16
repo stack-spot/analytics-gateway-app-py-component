@@ -2,89 +2,13 @@ openapi: "3.0.1"
 info:
   title: "{{api_name}}"
   description: "REST API to publish events to Data Lake"
-  version: "1.1.0"
+  version: "1.2.0"
   contact:
     name: Data Mesh API Support
     url: https://www.stackspot.com/
     email: support@stackspot.com
 paths:
-  /v1/events/{datalake_name}/{schema_version}/{schema_name}:
-    post:
-      operationId: "postStream"
-      parameters:
-        - name: "datalake_name"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-
-        - name: "schema_name"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-
-        - name: "schema_version"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-          description: If query string validate=false, schema_version must be a number value  ("latest" can not be used).
-
-        - name: "validate"
-          in: "query"
-          schema:
-            type: "boolean"
-            default: true
-          description: If validate=false, EventData schema will not be validated.
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RequestModel"
-        required: true
-      responses:
-        "200":
-          description: "200 response"
-          content: {}
-      security:
-        - sigv4: []
-        - api_key: []
-      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
-      x-amazon-apigateway-integration:
-        type: "aws"
-        credentials: "{{api_gateway_role}}"
-        httpMethod: "POST"
-        uri: "{{lambda_function_uri_invocation_arn}}"
-        responses:
-          default:
-            statusCode: "200"
-            responseTemplates:
-              application/json:
-                "#set($context.responseOverride.status = $input.path('$.statusCode'))\n\
-                $input.path('$.body')"
-        requestTemplates:
-          application/json: |
-            #if($input.params("validate") != "" && $util.isBoolean($input.params("validate")))
-              #set( $validate = $input.params("validate"))
-            #else
-              #set ($validate = "true")
-            #end
-
-            {
-              "pathParameters": {
-                "datalake_name": "$input.params('datalake_name')",
-                "schema_name": "$input.params('schema_name')",
-                "schema_version": "$input.params('schema_version')"
-              },
-              "queryStringParameters": {
-                "validate": "$validate"
-              },
-              "body": "$util.escapeJavaScript($input.json('$'))"
-            }
-        passthroughBehavior: "when_no_templates"
-  /v2/events/{datalake_name}/{schema_version}/{schema_name}:
+  /stack-analytics/micro-batch/v1.2.0/events/{datalake_name}/{schema_version}/{schema_name}:
     post:
       operationId: "postStream"
       parameters:
@@ -141,11 +65,13 @@ paths:
             statusCode: "200"
             responseTemplates:
               application/json: |
+                #set($stream_name = $util.escapeJavaScript("$input.params('datalake_name')-$input.params('schema_name')-kinesis").replaceAll("_","-"))
+
                 {
                   "requestId": "$context.requestId",
                   "eventType": "EventTransaction",
                   "eventCategory": "DataSchema",
-                  "eventMessage": "Put $input.path('$.Records').size() records in stream $input.params('datalake_name')-$input.params('schema_name')-kinesis",
+                  "eventMessage": "Put $input.path('$.Records').size() records in stream $stream_name",
                   "evnentTime": "$context.requestTime"
                 }
         requestTemplates:
@@ -159,8 +85,10 @@ paths:
             #set( $event_data = "event_data" )
             #set( $quote = '"' )
 
+            #set($stream_name = $util.escapeJavaScript("$input.params('datalake_name')-$input.params('schema_name')-kinesis").replaceAll("_","-"))
+
             {
-              "StreamName": "$input.params('datalake_name')-$input.params('schema_name')-kinesis",
+              "StreamName": "$stream_name",
               "Records": [#foreach($elem in $inputRoot)
                 #set($jsonPath = "$[$foreach.index].EventData")
                 #set( $event_id_value = $elem.EventID )
@@ -199,34 +127,6 @@ components:
             type: "number"
           EventData:
             type: "string"
-    RequestModel:
-      oneOf:
-        - type: "object"
-          required:
-            - "EventData"
-            - "EventID"
-            - "EventTime"
-          properties:
-            EventTime:
-              type: "number"
-            EventID:
-              type: "number"
-            EventData:
-              type: "string"
-        - type: "array"
-          items:
-            required:
-              - "EventData"
-              - "EventID"
-              - "EventTime"
-            type: "object"
-            properties:
-              EventTime:
-                type: "number"
-              EventID:
-                type: "number"
-              EventData:
-                type: "string"
   securitySchemes:
     api_key:
       type: "apiKey"

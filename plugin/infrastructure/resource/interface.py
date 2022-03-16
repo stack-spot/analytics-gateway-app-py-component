@@ -13,16 +13,3 @@ class DataApiGatewayCloudInterface(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def create_assets(self, api_gateway: ApiGateway):
-        """
-        TO DO
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def create_function(self, name: str, registry: str, region: str):
-        """
-        TO DO
-        """
-        raise NotImplementedError

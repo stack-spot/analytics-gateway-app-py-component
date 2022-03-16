@@ -225,9 +225,6 @@ class CDKEngineTest(TestCase, CDKEngine):
         my_stack = "my-stack"
         stack = Stack(self.app, my_stack)
 
-        stack.create_bucket_for_lambda_assets(
-            name="my-bucket-to-put-lambda-zip-file")
-
         self.mock_cf.create_stack.side_effect = [
             self.mock_create_stack(
                 stack_name=my_stack,
@@ -274,64 +271,3 @@ class CDKEngineTest(TestCase, CDKEngine):
             with pytest.raises(ClientError):
                 self._CDKEngine__update(self.mock_cf, my_stack, stack_template)
 
-    @mock.patch("plugin.infrastructure.resource.aws.cdk.engine.helpers.boto3", autospec=True)
-    def test_raises_already_exists_exception_when_deploy_stack(self, mock_boto3):
-
-        mock_session = mock_boto3.Session.return_value
-        mock_cf = mock_session.client.return_value
-
-        self.new_app()
-        my_stack = "my-stack"
-        stack = Stack(self.app, my_stack)
-
-        stack.create_bucket_for_lambda_assets(
-            name="my-bucket-to-put-lambda-zip-file")
-
-        mock_cf.create_stack.side_effect = [
-            self.get_exception_from_create_stack(
-                exception="AlreadyExistsException",
-                stack_name=my_stack,
-                stack_template=self.mock_stack_template()
-            )
-        ]
-
-        mock_cf.describe_stack_events.side_effect = [
-            self.get_exception_from_describe_stack_events(
-                exception="AlreadyExistsException",
-                stack_name=my_stack
-            )
-        ]
-
-        with pytest.raises(ClientError):
-            self.deploy(stack_name=my_stack, region="us-east-1")
-
-    @mock.patch("plugin.infrastructure.resource.aws.cdk.engine.helpers.boto3", autospec=True)
-    def test_raises_unexpected_exception_when_deploy_stack(self, mock_boto3):
-
-        mock_session = mock_boto3.Session.return_value
-        mock_cf = mock_session.client.return_value
-
-        self.new_app()
-        my_stack = "my-stack"
-        stack = Stack(self.app, my_stack)
-
-        stack.create_bucket_for_lambda_assets(
-            name="my-bucket-to-put-lambda-zip-file")
-
-        mock_cf.create_stack.side_effect = [
-            self.get_exception_from_create_stack(
-                exception="UnexpectedException",
-                stack_name=my_stack,
-                stack_template=self.mock_stack_template()
-            )
-        ]
-
-        mock_cf.describe_stack_events.side_effect = [
-            self.get_exception_from_describe_stack_events(
-                exception="AlreadyExistsException",
-                stack_name=my_stack
-            )
-        ]
-
-        with pytest.raises(ClientError):
-            self.deploy(stack_name=my_stack, region="us-east-1")

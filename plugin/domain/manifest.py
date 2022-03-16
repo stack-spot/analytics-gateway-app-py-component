@@ -74,6 +74,8 @@ class ApiGateway:
         val_.checking_the_type(self)
         val_.checking_vars_type(
             self, name="str", region="str", type="str", registry="str")
+        val_.check_special_characters(string=self.name)
+        val_.check_special_characters(string=self.registry)
 
 
 @dataclass
